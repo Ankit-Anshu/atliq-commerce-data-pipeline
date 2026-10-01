@@ -1,0 +1,4 @@
+# Phase 1 — local Python deps (simulator + dbt)
+pyodbc>=5.0,<6.0
+python-dotenv>=1.0,<2.0
+dbt-databricks>=1.10,<2.0
