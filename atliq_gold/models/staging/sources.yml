@@ -1,0 +1,7 @@
+sources:
+  - name: silver
+    catalog: atliq
+    schema: silver
+    tables: [{name: customers}, {name: orders}, {name: order_items}, {name: payments},
+             {name: products}, {name: supplier_price_list}, {name: marketing_spend},
+             {name: web_events}]
