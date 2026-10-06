@@ -1,0 +1,6 @@
+table_name,rule,rows_affected
+customers,test accounts flagged,56
+marketing_spend,blank-spend rows dropped,102
+marketing_spend,exact duplicate rows removed,324
+supplier_price_list,exact duplicate rows removed,24
+supplier_price_list,rows for unknown products dropped,18
