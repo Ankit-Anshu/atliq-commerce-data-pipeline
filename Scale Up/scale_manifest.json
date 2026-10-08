@@ -1,0 +1,61 @@
+{
+  "customers": 20000,
+  "products": 500,
+  "orders": 996038,
+  "order_items": 2367418,
+  "payments": 818178,
+  "orders_by_status": {
+    "Placed": 4104,
+    "Shipped": 9655,
+    "Delivered": 687909,
+    "Cancelled": 177860,
+    "Returned": 116510
+  },
+  "gross_revenue_excl_cancelled": 6051157102.0,
+  "returned_revenue": 862743818.0,
+  "net_revenue": 5188413284.0,
+  "payments_total": 6051157102.0,
+  "distinct_cities": 10,
+  "customers_by_city": {
+    "Ahmedabad": 1139,
+    "Bengaluru": 3382,
+    "Chennai": 2088,
+    "Delhi": 2828,
+    "Hyderabad": 2209,
+    "Jaipur": 939,
+    "Kolkata": 1594,
+    "Mumbai": 3256,
+    "Pune": 1737,
+    "Surat": 828
+  },
+  "distinct_categories": 6,
+  "supplier_current_rows": 500,
+  "supplier_current_cost_total": 570317.79,
+  "marketing_rows": 3037,
+  "marketing_spend_total": 8920850.16,
+  "marketing_spend_by_channel": {
+    "Email": 557863.38,
+    "Google Ads": 3202167.25,
+    "Influencer": 1621186.88,
+    "Meta Ads": 2589243.43,
+    "SEO": 950389.22
+  },
+  "marketing_clicks_total": 3274996,
+  "web_events": 7317182,
+  "web_events_by_type": {
+    "page_view": 3334727,
+    "product_view": 2136203,
+    "add_to_cart": 1085380,
+    "checkout": 413367,
+    "purchase": 347505
+  },
+  "funnel": {
+    "sessions": 1679200,
+    "product_view": 1011631,
+    "add_to_cart": 612263,
+    "checkout": 413367,
+    "purchase": 347505
+  },
+  "web_sessions": 1679200
+}
+
