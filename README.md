@@ -494,17 +494,29 @@ The seed dataset is small enough that a pipeline can pass on it by accident. To 
 rather than the data volume, the OLTP database was regenerated at roughly 100× and the entire chain
 re-run unchanged: no code edits, no tuning, no new activities.
 
-| | Seed | Scale test |
-|---|---|---|
-| Customers | 1,000 | 20,060 |
-| Products | 60 | 500 |
-| Orders | 9,961 | 1,000,000 |
-| Order items | 22,959 | 2,386,850 |
-| Payments | 8,183 | 833,757 |
-| Web events | 93,436 | 7,317,182 |
-| Web sessions | 23,193 | 1,679,200 |
+| | Seed | Silver (raw) | Gold (filtered) |
+|---|---|---|---|
+| Customers | 1,000 | 20,060 | 20,000 |
+| Products | 60 | 500 | 500 |
+| Orders | 9,961 | 1,000,000 | 996,038 |
+| Order items | 22,959 | 2,386,850 | 2,367,418 |
+| Payments | 8,183 | 833,757 | 818,178 |
+| Web events | 93,436 | 7,317,182 | 7,317,182 |
+| Web sessions | 23,193 | — | 1,679,200 |
 
 ![Row counts at scale](scale_up_results/totals_match.png)
+
+**Why the two columns differ.** Silver is a faithful copy of the source, so it keeps QA test accounts
+with an `is_test` flag rather than deleting them. They are filtered out one layer later, in
+`stg_orders`. At this scale 60 test customers carried 3,962 orders, 19,432 line items and 15,579
+payments, and that is the entire gap between the columns. Products and web events are not
+customer-scoped, so they are identical in both.
+
+The filtered figures are the ones in
+[`scale_up_results/scale_manifest.json`](scale_up_results/scale_manifest.json), and they match the
+Gold tables exactly: manifest `order_items` equals `fact_sales` at 2,367,418, and `web_sessions`
+equals `fact_web_sessions` at 1,679,200. The screenshot above lists the raw Silver counts alongside
+those two Gold tables, which is why its first rows are the larger numbers.
 
 **The reconciliation identity survives.** Payments total and gross revenue excluding Cancelled both
 come to **6,051,157,102.00**. Agreement at a million orders means the dedup logic in `stg_payments`
