@@ -36,6 +36,7 @@ Built as the capstone for the Codebasics Data Engineering Bootcamp.
 - [Timestamp consistency](#timestamp-consistency)
 - [Checkpoint totals](#checkpoint-totals)
 - [Data quality report](#data-quality-report)
+- [Scale test](#scale-test)
 - [Getting started](#getting-started)
 
 ---
@@ -111,9 +112,10 @@ atliq-commerce-data-pipeline/
 │   ├── models/gold/             5 marts plus schema.yml tests
 │   ├── dbt_project.yml
 │   └── profiles.yml             env_var() references only
-├── audit/                       data quality queries and the exported report
+├── audit/                       checkpoint and data quality queries, exported report
+├── scale_up_results/            100× scale test: notebook, manifest, run evidence
 ├── fabric_analytics/            semantic model and dashboard screenshots
-├── docs/                        dashboard, CI run, idempotency proof
+├── docs/                        dashboard, nightly run, CI, idempotency proof
 ├── .github/workflows/ci.yml     dbt build and tests on every pull request
 ├── atliq_commerce_architecture.svg
 └── requirements.txt
@@ -328,14 +330,32 @@ A broken relationship or an unmapped status fails the nightly job instead of rea
 
 ### 5. Orchestration
 
-| Time (IST) | Component |
+| Time (IST) | Component | Duration |
+|---|---|---|
+| 01:00 | ADF trigger `tr_nightly_0100` fires `pl_ingest_bronze` | 3m 22s |
+| 01:30 | Databricks `job_nightly`, task `silver` (`02_silver`) | 13m 13s |
+| 01:43 | Databricks `job_nightly`, task `gold` (`dbt deps`, `dbt build`) | 1m 48s |
+
+A full green run of 7 October 2026, end to end in about 18 minutes:
+
+| | |
 |---|---|
-| 01:00 | ADF schedule trigger `tr_nightly_0100` fires `pl_ingest_bronze` |
-| 01:30 | Databricks job `job_nightly`: task `silver` (`02_silver`), then task `gold` (dbt build) |
+| ![ADF run](docs/nightly_adf.png) | `pl_ingest_bronze`, triggered by `tr_nightly_0100`, Succeeded |
+| ![Silver task](docs/nightly_silver.png) | `02_silver`, launched by scheduler, `run_date` resolved |
+| ![Gold task](docs/nightly_gold.png) | dbt project `atliq_gold`, `dbt deps` then `dbt build`, Succeeded |
+
+Per-stage timings are in [`docs/pipeline_timings.pdf`](docs/pipeline_timings.pdf).
 
 The Silver task receives `run_date` as `{{job.start_time.iso_date}}`, so the notebook resolves its own
-Bronze partition. No date is hardcoded anywhere in the chain. The job emails on failure: a dashboard
-that is silently stale is worse than one that is visibly down.
+Bronze partition. No date is hardcoded anywhere in the chain.
+
+**Both sides agree on UTC, which matters more than it looks.** The ADF trigger is scheduled in India
+Standard Time, but `run_start_at` is `@utcNow()`, so a 01:00 IST run lands Bronze in
+`ingest_date=2026-10-06`. The Databricks job starting at 01:30 IST resolves `run_date` to the same
+`2026-10-06`. Had one side used local time, Silver would have looked for a folder that did not exist
+and quietly reported "Silver unchanged" every night, with no error anywhere.
+
+The job emails on failure: a dashboard that is silently stale is worse than one that is visibly down.
 
 ### 6. Reporting (Microsoft Fabric)
 
@@ -444,8 +464,9 @@ Measured on the seed period (`order_date <= 2026-08-31`) against the figures in 
 
 Payments reconcile to gross revenue exactly, 32,424,661.00 from both directions. That identity only
 holds once retried payments, double-submitted line items and QA test accounts are each handled
-correctly, so it validates the whole cleaning layer in a single number. The verification queries are
-the checkpoint cells at the end of [`databricks/02_silver.py`](databricks/02_silver.py).
+correctly, so it validates the whole cleaning layer in a single number. The verification queries,
+each carrying its expected value as a comment, are in
+[`audit/checkpoint_totals.sql`](audit/checkpoint_totals.sql).
 
 ---
 
@@ -464,6 +485,35 @@ Rows affected per cleaning rule, from `atliq.silver.dq_log`. Export in
 
 Worth watching over time: a rule whose count jumps suddenly is an early signal that a source system
 changed, before it shows up as a wrong number on the dashboard.
+
+---
+
+## Scale test
+
+The seed dataset is small enough that a pipeline can pass on it by accident. To check the design
+rather than the data volume, the OLTP database was regenerated at roughly 100× and the entire chain
+re-run unchanged: no code edits, no tuning, no new activities.
+
+| | Seed | Scale test |
+|---|---|---|
+| Customers | 1,000 | 20,060 |
+| Products | 60 | 500 |
+| Orders | 9,961 | 1,000,000 |
+| Order items | 22,959 | 2,386,850 |
+| Payments | 8,183 | 833,757 |
+| Web events | 93,436 | 7,317,182 |
+| Web sessions | 23,193 | 1,679,200 |
+
+![Row counts at scale](scale_up_results/totals_match.png)
+
+**The reconciliation identity survives.** Payments total and gross revenue excluding Cancelled both
+come to **6,051,157,102.00**. Agreement at a million orders means the dedup logic in `stg_payments`
+and `stg_order_items` is holding under genuine duplicate volume, not passing on a lucky sample.
+
+Evidence in [`scale_up_results/`](scale_up_results/): the generator notebook, `scale_manifest.json`
+with every total, run screenshots for the ADF, Silver, dbt and job stages, and query wall-clock
+timings. The notebook reads its SQL credentials from a Databricks secret scope, so nothing is
+hardcoded.
 
 ---
 
